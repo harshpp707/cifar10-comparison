@@ -6,13 +6,16 @@ import torchvision.transforms as transforms
 from torch.utils.data import random_split, DataLoader
 from tqdm import tqdm
 import os
+import argparse
 
 from models.cnn import SimpleCNN
 from utils import get_device, plot_curves
 
-from google.colab import drive
-drive.mount('/content/drive')
-drive_folder = "/content/drive/MyDrive/cifar_results"
+parser = argparse.ArgumentParser()
+parser.add_argument('--drive_folder', type=str, default="results",
+                    help="Folder where model and plots will be saved")
+args = parser.parse_args()
+drive_folder = args.drive_folder
 os.makedirs(drive_folder, exist_ok=True)
 
 def train_one_epoch(model, loader, criterion, optimizer, device):
