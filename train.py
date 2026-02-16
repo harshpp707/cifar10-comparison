@@ -3,11 +3,17 @@ import torch.nn as nn
 import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
+from torch.utils.data import random_split, DataLoader
 from tqdm import tqdm
+import os
 
 from models.cnn import SimpleCNN
 from utils import get_device, plot_curves
 
+from google.colab import drive
+drive.mount('/content/drive')
+drive_folder = "/content/drive/MyDrive/cifar_results"
+os.makedirs(drive_folder, exist_ok=True)
 
 def train_one_epoch(model, loader, criterion, optimizer, device):
     model.train()
@@ -31,17 +37,14 @@ def train_one_epoch(model, loader, criterion, optimizer, device):
 
     return running_loss / len(loader), 100. * correct / total
 
-
 def evaluate(model, loader, criterion, device):
     model.eval()
     running_loss = 0
     correct = 0
     total = 0
-
     with torch.no_grad():
         for images, labels in loader:
             images, labels = images.to(device), labels.to(device)
-
             outputs = model(images)
             loss = criterion(outputs, labels)
 
@@ -51,7 +54,6 @@ def evaluate(model, loader, criterion, device):
             correct += predicted.eq(labels).sum().item()
 
     return running_loss / len(loader), 100. * correct / total
-
 
 def main():
     device = get_device()
@@ -71,23 +73,23 @@ def main():
                              (0.5, 0.5, 0.5))
     ])
 
-    train_dataset = torchvision.datasets.CIFAR10(
+    full_train_dataset = torchvision.datasets.CIFAR10(
         root="./data", train=True, download=True, transform=transform_train)
+
+    train_size = 45000
+    val_size = 5000
+    train_dataset, val_dataset = random_split(full_train_dataset, [train_size, val_size])
 
     test_dataset = torchvision.datasets.CIFAR10(
         root="./data", train=False, download=True, transform=transform_test)
 
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=128, shuffle=True)
-
-    test_loader = torch.utils.data.DataLoader(
-        test_dataset, batch_size=128, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=128, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False)
 
     model = SimpleCNN().to(device)
-
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-4)
-
     num_epochs = 20
 
     train_losses, val_losses = [], []
@@ -95,12 +97,8 @@ def main():
 
     for epoch in range(num_epochs):
         print(f"\nEpoch {epoch+1}/{num_epochs}")
-
-        tr_loss, tr_acc = train_one_epoch(
-            model, train_loader, criterion, optimizer, device)
-
-        val_loss, val_accuracy = evaluate(
-            model, test_loader, criterion, device)
+        tr_loss, tr_acc = train_one_epoch(model, train_loader, criterion, optimizer, device)
+        val_loss, val_accuracy = evaluate(model, val_loader, criterion, device)
 
         train_losses.append(tr_loss)
         val_losses.append(val_loss)
@@ -109,9 +107,16 @@ def main():
 
         print(f"Train Acc: {tr_acc:.2f}% | Val Acc: {val_accuracy:.2f}%")
 
-    torch.save(model.state_dict(), "results/cnn_model.pth")
-    plot_curves(train_losses, val_losses, train_acc, val_acc)
+    model_path = os.path.join(drive_folder, "cnn_model.pth")
+    torch.save(model.state_dict(), model_path)
+    print(f"Model saved to {model_path}")
 
+    plot_curves(train_losses, val_losses, train_acc, val_acc, drive_folder)
+    print(f"Plots saved to {drive_folder}")
+
+    print("\nEvaluating on Test Set")
+    test_loss, test_accuracy = evaluate(model, test_loader, criterion, device)
+    print(f"Final Test Accuracy: {test_accuracy:.2f}%")
 
 if __name__ == "__main__":
     main()
