@@ -58,13 +58,13 @@ def main():
     print("Using device:", device)
 
     transform_train = transforms.Compose([
-        transforms.Resize((32,32)),     
+        transforms.Resize((224,224)),      
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))
     ])
     transform_test = transforms.Compose([
-        transforms.Resize((32,32)),
+        transforms.Resize((224,224)),
         transforms.ToTensor(),
         transforms.Normalize((0.5,0.5,0.5),(0.5,0.5,0.5))
     ])
@@ -79,9 +79,9 @@ def main():
     test_dataset = torchvision.datasets.CIFAR10(
         root="./data", train=False, download=True, transform=transform_test)
 
-    train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
     model = ViT_CIFAR(pretrained=args.pretrained).to(device)
     criterion = nn.CrossEntropyLoss()
@@ -104,7 +104,8 @@ def main():
     model_path = os.path.join(drive_folder, "vit_model.pth")
     torch.save(model.state_dict(), model_path)
     print(f"Model saved to {model_path}")
-    plot_curves(train_losses, val_losses, train_acc, val_acc, drive_folder)
+
+    plot_curves(train_losses, val_losses, train_acc, val_acc, drive_folder, prefix="vit")
     print(f"Plots saved to {drive_folder}")
 
     print("\nEvaluating on Test Set")
